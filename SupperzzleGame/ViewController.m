@@ -7,6 +7,7 @@
 //
 
 #import "ViewController.h"
+#import "WJGCDTimerManager.h"
 
 @interface ViewController ()
 
@@ -33,6 +34,7 @@
     _itemButtons = [[NSMutableArray alloc] init];
     _level = 1;
     _score = 0;
+    _timerContainer = [[NSMutableDictionary alloc] init];
 }
 
 - (void)initMenu{
@@ -45,14 +47,65 @@
 }
 
 - (void)startGame{
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(60 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Failed" message:@"闯关失败，请再接再厉" preferredStyle:UIAlertControllerStyleAlert];
-        [self presentViewController:alertController animated:YES completion:nil];
-        UIAlertAction *actionAgain = [UIAlertAction actionWithTitle:@"重玩" style:UIAlertActionStyleDefault handler: ^(UIAlertAction * _Nonnull action) {
-            [self playAgain];
-        }];
-        [alertController addAction:actionAgain];
+//    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(60 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+//        UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Failed" message:@"闯关失败，请再接再厉" preferredStyle:UIAlertControllerStyleAlert];
+//        [self presentViewController:alertController animated:YES completion:nil];
+//        UIAlertAction *actionAgain = [UIAlertAction actionWithTitle:@"重玩" style:UIAlertActionStyleDefault handler: ^(UIAlertAction * _Nonnull action) {
+//            [self playAgain];
+//        }];
+//        [alertController addAction:actionAgain];
+//    });
+    
+    //拿到一个队列
+//    dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+    dispatch_queue_t queue = dispatch_get_main_queue();
+    //创建一个timer放到队列里面
+    dispatch_source_t timer = [self.timerContainer objectForKey:@"GameFailed"];
+    if (!timer) {
+        timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
+        //激活timer
+        dispatch_resume(timer);
+        //将定时器对象加到容器中，这一步操作不做，延时操作不生效
+        [self.timerContainer setObject:timer forKey:@"GameFailed"];
+    }
+    /* timer精度为0.1秒 */
+    //设置timer的首次执行时间、执行时间间隔、精确度
+    dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, 6 * NSEC_PER_SEC), 6 * NSEC_PER_SEC, 0.1 * NSEC_PER_SEC);
+    
+    __weak typeof(self) weakSelf = self;
+    //设置timer执行的事件
+    dispatch_source_set_event_handler(timer, ^{
+        [weakSelf gameFailed];
     });
+    
+    //取消timer
+//    dispatch_source_cancel(timer);
+    
+    /*
+     改写JX_GCDTimerManager为WJGCDTimerManager
+     以后遇到好的代码都可以用WJ+类名的形式实现，形成一套规范
+     */
+//    [[WJGCDTimerManager sharedInstance] scheduledDispatchTimerWithName:@"GameFailed" timeInterval:10 queue:nil repeats:NO actionOption:AbandonPreviousAction action:^{
+//        [self gameFailed];
+//    }];
+//    [[WJGCDTimerManager sharedInstance] scheduledDispatchTimerWithName:@"GameFailed" timeInterval:10 queue:dispatch_get_main_queue() repeats:YES actionOption:AbandonPreviousAction action:^{
+//        [self gameFailed];
+//    }];
+}
+
+- (void)gameFailed{
+    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Failed" message:@"闯关失败，请再接再厉" preferredStyle:UIAlertControllerStyleAlert];
+    [self presentViewController:alertController animated:YES completion:nil];
+    UIAlertAction *actionAgain = [UIAlertAction actionWithTitle:@"重玩" style:UIAlertActionStyleDefault handler: ^(UIAlertAction * _Nonnull action) {
+        [self playAgain];
+    }];
+    [alertController addAction:actionAgain];
+    dispatch_source_t timer = [self.timerContainer objectForKey:@"GameFailed"];
+    if (timer) {
+        //取消timer
+        dispatch_source_cancel(timer);
+        [self.timerContainer removeObjectForKey:@"GameFailed"];
+    }
 }
 
 - (void)playAgain{
@@ -162,6 +215,13 @@
 }
 
 - (void)gameSuccess{
+    
+    dispatch_source_t timer = [self.timerContainer objectForKey:@"GameFailed"];
+    if (timer) {
+        //取消timer
+        dispatch_source_cancel(timer);
+        [self.timerContainer removeObjectForKey:@"GameFailed"];
+    }
     _score = _score+_level*10;
     _scoreLabel.text = [NSString stringWithFormat:@"当前得分:%d", _score];
     UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"Success" message:@"恭喜您过关！" preferredStyle:UIAlertControllerStyleAlert];

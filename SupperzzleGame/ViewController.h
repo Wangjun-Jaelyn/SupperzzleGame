@@ -19,5 +19,6 @@
 @property(nonatomic)int level;
 @property(nonatomic, strong)UILabel *scoreLabel;
 @property(nonatomic)int score;
+@property(nonatomic, strong)NSMutableDictionary *timerContainer;
 @end
 
