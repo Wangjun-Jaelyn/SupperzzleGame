@@ -9,7 +9,15 @@
 #import <UIKit/UIKit.h>
 
 @interface ViewController : UIViewController
-
-
+@property(nonatomic)CGFloat bgHeight;
+@property(nonatomic)CGFloat bgWidth;
+@property(nonatomic, copy)UIButton *selectButton;
+@property(nonatomic)int itemCount;
+@property(nonatomic)int hiddenItemNum;
+@property(nonatomic, copy)NSMutableArray *itemButtons;
+@property(nonatomic, strong)UILabel *levelLabel;
+@property(nonatomic)int level;
+@property(nonatomic, strong)UILabel *scoreLabel;
+@property(nonatomic)int score;
 @end
 
